@@ -1,0 +1,258 @@
+@{
+    ViewData["Title"] = "Admin Dashboard";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<!-- SALES TAB -->
+<div id="tab-sales" class="tab-content active">
+    <div class="period-filter-bar">
+        <button class="period-btn active" data-period="day">Today</button>
+        <button class="period-btn" data-period="month">This Month</button>
+        <button class="period-btn" data-period="year">This Year</button>
+        <button class="period-btn" data-period="all">All Time</button>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📦</div>
+            <div class="stat-info">
+                <span class="stat-label">Total Orders</span>
+                <span class="stat-value" id="admin-totalOrders">—</span>
+            </div>
+        </div>
+        <div class="stat-card highlight">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+                <span class="stat-label">Total Sales</span>
+                <span class="stat-value" id="admin-totalSales">—</span>
+            </div>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Order ID</th><th>Customer</th><th>Payment</th><th>Total</th><th>Date</th></tr>
+        </thead>
+        <tbody id="admin-sales-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:40px;color:#888;">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- SETTINGS TAB -->
+<div id="tab-settings" class="tab-content" style="display:none;">
+    <div style="padding:30px; max-width:500px;">
+        <h2 style="color:#CCBEA8; margin-bottom:24px;">Payment Settings</h2>
+
+        <div style="
+            background:#3A322B; border:1px solid #4f4439;
+            border-radius:12px; padding:20px;
+            display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="color:#CCBEA8; font-weight:600; font-size:16px;">
+                    💵 Cash on Delivery
+                </div>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="codToggle" checked />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <p id="settingsSaveMsg" style="display:none; color:#4CAF50; margin-top:12px;">
+            Settings saved!
+        </p>
+    </div>
+</div>
+
+<!-- ORDERS TAB -->
+<div id="tab-orders" class="tab-content" style="display:none;">
+    <div class="orders-toolbar">
+        <input type="text" id="adminOrderSearch" placeholder="Search by Order ID, Name, Phone..." class="order-search-input" />
+        <div class="status-filters">
+            <button class="status-filter active" data-status="all">All</button>
+            <button class="status-filter" data-status="Pending">Pending</button>
+            <button class="status-filter" data-status="Confirmed">Confirmed</button>
+            <button class="status-filter" data-status="Preparing">Preparing</button>
+            <button class="status-filter" data-status="Pickup">Pickup</button>
+            <button class="status-filter" data-status="Otw">On the Way</button>
+            <button class="status-filter" data-status="Delivered">Delivered</button>
+            <button class="status-filter" data-status="Completed">Completed</button>
+            <button class="status-filter" data-status="Cancelled">Cancelled</button>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Order ID</th><th>Customer</th><th>Phone</th><th>Payment</th><th>Total</th><th>Status</th><th>Date</th></tr>
+        </thead>
+        <tbody id="admin-orders-tbody">
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:#888;">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- USERS TAB -->
+<!-- USERS TAB -->
+<div id="tab-users" class="tab-content" style="display:none;">
+    <div style="padding:20px; display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="color:#CCBEA8;">Staff Management</h2>
+        <button id="addStaffBtn" class="save-status-btn">+ Add Staff</button>
+    </div>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Name</th><th>Phone</th><th>Role</th><th>Joined</th><th>Action</th></tr>
+        </thead>
+        <tbody id="admin-users-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:40px;color:#888;">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- ADD STAFF MODAL -->
+<div id="addStaffModal" class="order-modal-overlay" style="display:none;">
+    <div class="order-modal" style="max-width:450px;">
+        <div class="order-modal-header">
+            <h2>Add Staff</h2>
+            <button id="closeAddStaffModal" class="order-modal-close">✕</button>
+        </div>
+        <div class="order-modal-body">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Name</label>
+                    <input type="text" id="staffName"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;" />
+                </div>
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Phone</label>
+                    <input type="text" id="staffPhone" maxlength="11"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;" />
+                </div>
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Password</label>
+                    <input type="password" id="staffPassword"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;" />
+                </div>
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Role</label>
+                    <select id="staffRole"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;">
+                        <option value="Employee">Employee</option>
+                        <option value="Rider">Rider</option>
+                    </select>
+                </div>
+                <button id="submitStaff" class="save-status-btn">Create Staff</button>
+                <p id="staffMsg" style="display:none; margin:0;"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PRODUCTS TAB -->
+<!-- PRODUCTS TAB -->
+<div id="tab-products" class="tab-content" style="display:none;">
+    <div style="padding:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <input type="text" id="productSearch" placeholder="Search products..." class="order-search-input" />
+        <button id="addProductBtn" class="save-status-btn">+ Add Product</button>
+    </div>
+    <div id="products-grid" class="products-grid"></div>
+</div>
+
+<!-- ADD/EDIT PRODUCT MODAL -->
+<div id="productModal" class="order-modal-overlay" style="display:none;">
+    <div class="order-modal" style="max-width:500px;">
+        <div class="order-modal-header">
+            <h2 id="productModalTitle">Add Product</h2>
+            <button id="closeProductModal" class="order-modal-close">✕</button>
+        </div>
+        <div class="order-modal-body">
+            <input type="hidden" id="editProductId" value="0" />
+            <div style="display:flex;flex-direction:column;gap:14px;">
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Product Name</label>
+                    <input type="text" id="productName"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;" />
+                </div>
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Price (₱)</label>
+                    <input type="number" id="productPrice" min="0"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;" />
+                </div>
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Image URL</label>
+                    <input type="text" id="productImage" placeholder="/img/products/example.png"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;" />
+                </div>
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Category</label>
+                    <select id="productCategory"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;">
+                        <option value="hot">Hot Drinks</option>
+                        <option value="cold">Cold Drinks</option>
+                        <option value="burger">Burgers</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Stock</label>
+                    <input type="number" id="productStock" min="0" value="0"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;" />
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <input type="checkbox" id="productActive" checked style="width:16px;height:16px;" />
+                    <label style="color:#CCBEA8;">Active (visible in menu)</label>
+                </div>
+                <button id="submitProduct" class="save-status-btn">Save Product</button>
+                <p id="productMsg" style="display:none; margin:0;"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ORDER DETAIL MODAL -->
+<div id="orderModal" class="order-modal-overlay" style="display:none;">
+    <div class="order-modal">
+        <div class="order-modal-header">
+            <h2>Order Details</h2>
+            <button class="order-modal-close" id="closeOrderModal">✕</button>
+        </div>
+        <div class="order-modal-body">
+            <div class="order-detail-grid">
+                <div class="order-detail-item"><span class="detail-label">Order ID</span><span class="detail-value" id="modal-orderId"></span></div>
+                <div class="order-detail-item"><span class="detail-label">Date</span><span class="detail-value" id="modal-date"></span></div>
+                <div class="order-detail-item"><span class="detail-label">Customer</span><span class="detail-value" id="modal-name"></span></div>
+                <div class="order-detail-item"><span class="detail-label">Phone</span><span class="detail-value" id="modal-phone"></span></div>
+                <div class="order-detail-item full-width"><span class="detail-label">Address</span><span class="detail-value" id="modal-address"></span></div>
+                <div class="order-detail-item"><span class="detail-label">Payment</span><span class="detail-value" id="modal-payment"></span></div>
+                <div class="order-detail-item full-width"><span class="detail-label">Delivery Notes</span><span class="detail-value" id="modal-notes"></span></div>
+            </div>
+            <div class="order-modal-items">
+                <h3>Order Items</h3>
+                <div id="modal-items"></div>
+            </div>
+            <div class="order-modal-totals">
+                <div class="modal-total-row"><span>Subtotal</span><span id="modal-subtotal"></span></div>
+                <div class="modal-total-row"><span>Delivery Fee</span><span id="modal-delivery"></span></div>
+                <div class="modal-total-row grand"><span>Total</span><span id="modal-total"></span></div>
+                <div class="modal-total-row points"><span>Points Earned</span><span id="modal-points"></span></div>
+            </div>
+            <div class="order-modal-status">
+                <h3>Update Status</h3>
+                <div class="status-update-controls">
+                    <select id="modal-status-select">
+                        <option value="Pending">Pending</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Preparing">Preparing</option>
+                        <option value="Pickup">Pickup</option>
+                        <option value="Otw">On the Way</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                    <button id="saveStatusBtn" class="save-status-btn">Save Status</button>
+                </div>
+                <p id="statusSaveMsg" style="display:none; color:#4CAF50; margin-top:8px;">Status updated!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="~/js/admin-dashboard.js"></script>
+}

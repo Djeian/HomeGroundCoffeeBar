@@ -3,17 +3,18 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
+using HomeGroundCoffeeBar.Data;
+using HomeGroundCoffeeBar.Models;
+using Microsoft.EntityFrameworkCore;
 using Models;
-using MySql.Data.MySqlClient;
-using Org.BouncyCastle.Crypto.Generators;
 
 public class AccountController : Controller
 {
-    private readonly string connectionString;
+    private readonly ApplicationDbContext _context;
 
-    public AccountController(IConfiguration configuration)
+    public AccountController(ApplicationDbContext context)
     {
-        connectionString = configuration.GetConnectionString("DefaultConnection");
+        _context = context;
     }
 
     // ================================
@@ -32,7 +33,7 @@ public class AccountController : Controller
     public IActionResult GoogleLogin()
     {
         var redirectUrl = Url.Action("GoogleResponse", "Account");
-        var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
+        var properties  = new AuthenticationProperties { RedirectUri = redirectUrl };
         return Challenge(properties, GoogleDefaults.AuthenticationScheme);
     }
 
@@ -41,426 +42,302 @@ public class AccountController : Controller
         var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         var claims = result.Principal.Identities.FirstOrDefault()?.Claims;
 
-        var googleId = claims?.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-        var name = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
-        var email = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        var googleId   = claims?.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        var name       = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+        var email      = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
         var profilePic = claims?.FirstOrDefault(c => c.Type == "picture")?.Value;
 
-        using (var conn = new MySqlConnection(connectionString))
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.GoogleId == googleId);
+
+        if (user == null)
         {
-            conn.Open();
-
-            var checkCmd = new MySqlCommand("SELECT Id FROM Users WHERE GoogleId=@GoogleId", conn);
-            checkCmd.Parameters.AddWithValue("@GoogleId", googleId);
-            var userId = checkCmd.ExecuteScalar();
-
-            if (userId == null)
+            user = new UserModel
             {
-                var insertCmd = new MySqlCommand(
-                    "INSERT INTO Users (GoogleId, Name, Email, ProfilePic, CreatedAt) VALUES (@GoogleId, @Name, @Email, @Pic, NOW()); SELECT LAST_INSERT_ID();",
-                    conn
-                );
-                insertCmd.Parameters.AddWithValue("@GoogleId", googleId);
-                insertCmd.Parameters.AddWithValue("@Name", name);
-                insertCmd.Parameters.AddWithValue("@Email", email);
-                insertCmd.Parameters.AddWithValue("@Pic", profilePic ?? "0");
-                userId = insertCmd.ExecuteScalar();
-            }
-
-            // Store UserId in session
-            HttpContext.Session.SetString("UserId", userId.ToString());
-            HttpContext.Session.SetString("GoogleId", googleId ?? "");
-            HttpContext.Session.SetString("Name", name ?? "");
-            HttpContext.Session.SetString("Email", email ?? "");
-            HttpContext.Session.SetString("ProfilePic", profilePic ?? "0");
+                GoogleId   = googleId ?? "",
+                Name       = name ?? "",
+                ProfilePic = profilePic ?? "",
+                Role       = "User",
+                CreatedAt  = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
         }
 
-        return RedirectToAction("Home", "Home");
+        HttpContext.Session.SetString("UserId",     user.Id.ToString());
+        HttpContext.Session.SetString("GoogleId",   googleId ?? "");
+        HttpContext.Session.SetString("Name",       name ?? "");
+        HttpContext.Session.SetString("ProfilePic", profilePic ?? "");
+        HttpContext.Session.SetString("Role",       user.Role ?? "User");
+
+        var userClaims = new List<Claim>
+        {
+            new Claim("UserId",          user.Id.ToString()),
+            new Claim(ClaimTypes.Name,   name ?? ""),
+            new Claim("picture",         profilePic ?? ""),
+            new Claim(ClaimTypes.Role,   user.Role ?? "User")
+        };
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(new ClaimsIdentity(userClaims, CookieAuthenticationDefaults.AuthenticationScheme))
+        );
+
+        return RedirectByRole(user.Role);
     }
 
-    [HttpGet("/api/user/status")]
-    public IActionResult GetStatus() {
-        if (User.Identity.IsAuthenticated) {
-            return Ok(new { loggedIn = true, username = User.Identity.Name });
-        }
-        return Ok(new { loggedIn = false });
-    }
-
+    // ================================
     // SIGN UP
+    // ================================
     [HttpPost]
-    public IActionResult Signup(string Name, string Phone, string Password)
+    public async Task<IActionResult> Signup(string Name, string Phone, string Password)
     {
         try
         {
-            using (var conn = new MySqlConnection(connectionString))
+            var exists = await _context.Users.AnyAsync(u => u.Phone == Phone);
+            if (exists)
             {
-                conn.Open();
-
-                // CHECK PHONE
-                var checkCmd = new MySqlCommand(
-                    "SELECT COUNT(*) FROM Users WHERE Phone=@Phone", conn);
-                checkCmd.Parameters.AddWithValue("@Phone", Phone);
-
-                if (Convert.ToInt32(checkCmd.ExecuteScalar()) > 0)
-                {
-                    TempData["ErrorMessage"] = "Phone number already exists!";
-                    return RedirectToAction("Signup", "Home");
-                }
-
-                // INSERT USER
-                var cmd = new MySqlCommand(
-                    "INSERT INTO Users (Name, Phone, Password, Role, ProfilePic, GoogleId, points, CreatedAt) VALUES (@Name,@Phone,@Password,'User', 0, 0, 0, NOW())", 
-                    conn);
-
-                cmd.Parameters.AddWithValue("@Name", Name);
-                cmd.Parameters.AddWithValue("@Phone", Phone);
-                cmd.Parameters.AddWithValue("@Password", Password);
-                cmd.ExecuteNonQuery();
+                TempData["SignupError"] = "Phone number already exists!";
+                return RedirectToAction("Signup", "Home");
             }
+
+            var user = new UserModel
+            {
+                Name      = Name,
+                Phone     = Phone,
+                Password  = Password,
+                Role      = "User",
+                Points    = 0,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
 
             TempData["SignupSuccess"] = true;
             return RedirectToAction("Signup", "Home");
         }
         catch (Exception ex)
         {
-            // TEMPORARY: SHOW REAL ERROR
-            return Content(ex.Message);
+            TempData["SignupError"] = ex.Message;
+            return RedirectToAction("Signup", "Home");
         }
     }
 
-    [HttpPost]
-    public IActionResult AddToCart([FromBody] CartItem item)
-    {
-        var userId = HttpContext.Session.GetString("UserId");
-
-        if (string.IsNullOrEmpty(userId))
-            return Json(new { success = false, message = "Not logged in" });
-
-        if (item == null)
-            return Json(new { success = false, message = "Invalid item data" });
-
-        try
-        {
-            using (var conn = new MySqlConnection(connectionString))
-            {
-                conn.Open();
-
-                string checkQuery = "SELECT COUNT(*) FROM cart WHERE UserId=@UserId AND ProductName=@Product";
-                var checkCmd = new MySqlCommand(checkQuery, conn);
-                checkCmd.Parameters.AddWithValue("@UserId", userId);
-                checkCmd.Parameters.AddWithValue("@Product", item.name);
-
-                bool exists = Convert.ToInt32(checkCmd.ExecuteScalar()) > 0;
-
-                if (exists)
-                {
-                    string updateQuery = "UPDATE cart SET Quantity = Quantity + @Qty WHERE UserId=@UserId AND ProductName=@Product";
-                    var updateCmd = new MySqlCommand(updateQuery, conn);
-                    updateCmd.Parameters.AddWithValue("@Qty", item.quantity);
-                    updateCmd.Parameters.AddWithValue("@UserId", userId);
-                    updateCmd.Parameters.AddWithValue("@Product", item.name);
-                    updateCmd.ExecuteNonQuery();
-                }
-                else
-                {
-                    string insertQuery = @"
-                    INSERT INTO cart (UserId, ProductName, Price, Quantity, Image, CreatedAt)
-                    VALUES (@UserId, @Product, @Price, @Qty, @Image, NOW())";
-                    var insertCmd = new MySqlCommand(insertQuery, conn);
-                    insertCmd.Parameters.AddWithValue("@UserId", userId);
-                    insertCmd.Parameters.AddWithValue("@Product", item.name);
-                    insertCmd.Parameters.AddWithValue("@Price", item.price);
-                    insertCmd.Parameters.AddWithValue("@Qty", item.quantity);
-                    insertCmd.Parameters.AddWithValue("@Image", item.image);
-                    insertCmd.ExecuteNonQuery();
-                }
-
-                // Return updated cart
-                string getQuery = "SELECT ProductName, Price, Quantity, Image FROM cart WHERE UserId=@UserId";
-                var getCmd = new MySqlCommand(getQuery, conn);
-                getCmd.Parameters.AddWithValue("@UserId", userId);
-
-                var reader = getCmd.ExecuteReader();
-                var cartList = new List<object>();
-
-                while (reader.Read())
-                {
-                    cartList.Add(new
-                    {
-                        name = reader["ProductName"],
-                        price = Convert.ToDecimal(reader["Price"]),
-                        quantity = Convert.ToInt32(reader["Quantity"]),
-                        image = reader["Image"].ToString()
-                    });
-                }
-
-                return Json(new { success = true, cart = cartList });
-            }
-        }
-        catch (Exception ex)
-        {
-            return Json(new { success = false, message = ex.Message });
-        }
-    }
-
-        [HttpGet]
-        public IActionResult GetCart()
-        {
-            var userId = HttpContext.Session.GetString("UserId");
-            if (string.IsNullOrEmpty(userId))
-                return Json(new List<object>());
-
-            var cart = new List<object>();
-            using (var conn = new MySqlConnection(connectionString))
-            {
-                conn.Open();
-                string query = "SELECT CartId, ProductName, Price, Quantity, Image FROM cart WHERE UserId=@UserId";            
-                using (var cmd = new MySqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@UserId", userId);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            cart.Add(new
-                            {
-                                cartId = reader["CartId"],   // Changed from 'id' to 'cartId'
-                                name = reader["ProductName"],
-                                price = Convert.ToDecimal(reader["Price"]),
-                                quantity = Convert.ToInt32(reader["Quantity"]),
-                                image = reader["Image"].ToString()
-                            });
-                        }
-                    }
-                }
-            }
-            return Json(cart);
-        }
-
-    // LOGIN
+    // ================================
+    // SIGN IN
+    // ================================
     [HttpPost]
     public async Task<IActionResult> Signin(string Phone, string Password)
     {
-        using (var conn = new MySqlConnection(connectionString))
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Phone == Phone);
+
+        if (user == null)
         {
-            conn.Open();
-            
-            string query = "SELECT Id, Name, ProfilePic, GoogleId, Role, Password FROM Users WHERE Phone=@Phone";
-            using (var cmd = new MySqlCommand(query, conn))
-            {
-                cmd.Parameters.AddWithValue("@Phone", Phone);
-                using (var reader = cmd.ExecuteReader())
-                {
-                    if (!reader.Read())
-                    {
-                        TempData["ErrorMessage"] = "Phone number not found!";
-                        return RedirectToAction("Signin", "Home");
-                    }
-
-                    if (reader["Password"].ToString() != Password)
-                    {
-                        TempData["ErrorMessage"] = "Incorrect password!";
-                        return RedirectToAction("Signin", "Home");
-                    }
-
-                    var rawPic = reader["ProfilePic"]?.ToString();
-                    var profilePic = string.IsNullOrWhiteSpace(rawPic) || rawPic == "1" ? "0" : rawPic;
-
-                    // SET SESSION
-                    var userId = reader["Id"].ToString();
-                    Console.WriteLine("user Id: " + userId); // This works REMOVE THIS
-                    HttpContext.Session.SetString("UserId", userId);
-                    HttpContext.Session.SetString("Phone", Phone);
-                    HttpContext.Session.SetString("Name", reader["Name"].ToString());
-                    HttpContext.Session.SetString("ProfilePic", reader["ProfilePic"]?.ToString() ?? "");
-                    HttpContext.Session.SetString("Role", reader["Role"]?.ToString() ?? "User");
-
-                    // UNNECESSARY TONG `HttpContext.Session` applicable lang to dito sa controller, at the same time hindi den naman siya pinapasa as object or veiw data
-
-                    // si claims ang nag hahandle ng session, pwera nalang kung mas trip niyo ng `HttpContxt`, medyo matrabhao nga lang
-
-                    // SET CLAIMS
-                    var claims = new List<Claim>
-                    {
-                        new Claim("UserId", userId),
-                        new Claim("Phone", Phone),
-                        new Claim(ClaimTypes.Name, reader["Name"].ToString()),
-                        new Claim("picture", reader["ProfilePic"]?.ToString() ?? ""),
-                        new Claim(ClaimTypes.Role, reader["Role"]?.ToString() ?? "User")
-                    };
-
-                    await HttpContext.SignInAsync(
-                        CookieAuthenticationDefaults.AuthenticationScheme,
-                        new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme))
-                    );
-
-                    if (reader["Role"]?.ToString() == "Admin")
-                        return RedirectToAction("AdminHomePage", "Admin");
-                    else
-                        return RedirectToAction("Home", "Home");
-                }
-            }
+            TempData["ErrorMessage"] = "Phone number not found!";
+            return RedirectToAction("Signin", "Home");
         }
+
+        if (user.Password != Password)
+        {
+            TempData["ErrorMessage"] = "Incorrect password!";
+            return RedirectToAction("Signin", "Home");
+        }
+
+        var profilePic = string.IsNullOrWhiteSpace(user.ProfilePic) || user.ProfilePic == "1"
+            ? "" : user.ProfilePic;
+
+        HttpContext.Session.SetString("UserId",     user.Id.ToString());
+        HttpContext.Session.SetString("Phone",      Phone);
+        HttpContext.Session.SetString("Name",       user.Name ?? "");
+        HttpContext.Session.SetString("ProfilePic", profilePic);
+        HttpContext.Session.SetString("Role",       user.Role ?? "User");
+
+        var claims = new List<Claim>
+        {
+            new Claim("UserId",          user.Id.ToString()),
+            new Claim("Phone",           Phone),
+            new Claim(ClaimTypes.Name,   user.Name ?? ""),
+            new Claim("picture",         profilePic),
+            new Claim(ClaimTypes.Role,   user.Role ?? "User")
+        };
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme))
+        );
+
+        return RedirectByRole(user.Role);
     }
 
+    // ================================
+    // ROLE-BASED REDIRECT
+    // ================================
+    private IActionResult RedirectByRole(string? role) => role switch
+    {
+        "SuperAdmin" => RedirectToAction("Dashboard", "SuperAdmin"),
+        "Admin"      => RedirectToAction("Dashboard", "Admin"),
+        "Employee"   => RedirectToAction("Dashboard", "Employee"),
+        "Rider"      => RedirectToAction("Dashboard", "Rider"),
+        _            => RedirectToAction("Home", "Home")
+    };
 
-//LATEST CART DATABASE RELATED CODES
-
+    // ================================
+    // CART — using EF Core
+    // ================================
     [HttpPost]
-    public IActionResult UpdateQuantityInput([FromBody] UpdateQuantityInputRequest data)
+    public async Task<IActionResult> AddToCart([FromBody] CartItem item)
     {
         var userId = HttpContext.Session.GetString("UserId");
         if (string.IsNullOrEmpty(userId))
             return Json(new { success = false, message = "Not logged in" });
 
-        try
+        // Check stock
+        var product = await _context.Products
+            .FirstOrDefaultAsync(p => p.Name == item.name && p.IsActive);
+
+        if (product == null)
+            return Json(new { success = false, message = "Product not found." });
+
+        if (product.Stock <= 0)
+            return Json(new { success = false, message = "Sorry, this item is out of stock." });
+
+        var existing = await _context.Cart
+            .FirstOrDefaultAsync(c => c.UserId == userId && c.ProductName == item.name);
+
+        if (existing != null)
         {
-            using (var conn = new MySqlConnection(connectionString))
+            // Check if adding more would exceed stock
+            if (existing.Quantity + item.quantity > product.Stock)
+                return Json(new { success = false, message = $"Only {product.Stock} left in stock." });
+
+            existing.Quantity += item.quantity;
+        }
+        else
+        {
+            if (item.quantity > product.Stock)
+                return Json(new { success = false, message = $"Only {product.Stock} left in stock." });
+
+            _context.Cart.Add(new Cart
             {
-                conn.Open();
-                
-                var cmd = new MySqlCommand(
-                    "UPDATE cart SET Quantity = @Quantity WHERE UserId=@UserId AND CartId=@CartId", conn);
-                cmd.Parameters.AddWithValue("@Quantity", data.quantity);
-                cmd.Parameters.AddWithValue("@UserId", userId);
-                cmd.Parameters.AddWithValue("@CartId", data.cartId);
-                cmd.ExecuteNonQuery();
-
-                // Return updated cart
-                var cartList = new List<object>();
-                var getCartCmd = new MySqlCommand(
-                    "SELECT CartId, ProductName, Price, Quantity, Image FROM cart WHERE UserId=@UserId", conn);
-                getCartCmd.Parameters.AddWithValue("@UserId", userId);
-                
-                using (var reader = getCartCmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        cartList.Add(new
-                        {
-                            cartId = Convert.ToInt32(reader["CartId"]),
-                            name = reader["ProductName"].ToString(),
-                            price = Convert.ToDecimal(reader["Price"]),
-                            quantity = Convert.ToInt32(reader["Quantity"]),
-                            image = reader["Image"].ToString()
-                        });
-                    }
-                }
-
-                return Json(new { success = true, cart = cartList });
-            }
+                UserId      = userId,
+                ProductName = item.name,
+                Price       = item.price,
+                Quantity    = item.quantity,
+                Image       = item.image,
+                CreatedAt   = DateTime.UtcNow
+            });
         }
-        catch (Exception ex)
-        {
-            return Json(new { success = false, message = ex.Message });
-        }
+
+        await _context.SaveChangesAsync();
+
+        var cart = await GetCartList(userId);
+        return Json(new { success = true, cart });
     }
 
-        [HttpPost]
-        public IActionResult UpdateQuantity([FromBody] UpdateQuantityRequest data)
+    [HttpGet]
+    public async Task<IActionResult> GetCart()
+    {
+        var userId = HttpContext.Session.GetString("UserId");
+        if (string.IsNullOrEmpty(userId))
+            return Json(new List<object>());
+
+        var cart = await GetCartList(userId);
+        return Json(cart);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> UpdateQuantity([FromBody] UpdateQuantityRequest data)
+    {
+        var userId = HttpContext.Session.GetString("UserId");
+        if (string.IsNullOrEmpty(userId))
+            return Json(new { success = false, message = "Not logged in" });
+
+        var item = await _context.Cart
+            .FirstOrDefaultAsync(c => c.CartId == data.cartId && c.UserId == userId);
+
+        if (item == null)
+            return Json(new { success = false, message = "Item not found" });
+
+        if (data.action == "increase")
         {
-            var userId = HttpContext.Session.GetString("UserId");
-            if (string.IsNullOrEmpty(userId))
-                return Json(new { success = false, message = "Not logged in" });
-
-            try
-            {
-                using (var conn = new MySqlConnection(connectionString))
-                {
-                    conn.Open();
-
-                    if (data.action == "increase")
-                    {
-                        var cmd = new MySqlCommand(
-                            "UPDATE cart SET Quantity = Quantity + 1 WHERE UserId=@UserId AND CartId=@CartId", conn);
-                        cmd.Parameters.AddWithValue("@UserId", userId);
-                        cmd.Parameters.AddWithValue("@CartId", data.cartId);
-                        cmd.ExecuteNonQuery();
-                    }
-                    else if (data.action == "decrease")
-                    {
-                        // First get current quantity
-                        var getCmd = new MySqlCommand(
-                            "SELECT Quantity FROM cart WHERE UserId=@UserId AND CartId=@CartId", conn);
-                        getCmd.Parameters.AddWithValue("@UserId", userId);
-                        getCmd.Parameters.AddWithValue("@CartId", data.cartId);
-                        
-                        var result = getCmd.ExecuteScalar();
-                        if (result == null)
-                            return Json(new { success = false, message = "Item not found" });
-                            
-                        var currentQty = Convert.ToInt32(result);
-                        
-                        if (currentQty <= 1)
-                        {
-                            var deleteCmd = new MySqlCommand(
-                                "DELETE FROM cart WHERE UserId=@UserId AND CartId=@CartId", conn);
-                            deleteCmd.Parameters.AddWithValue("@UserId", userId);
-                            deleteCmd.Parameters.AddWithValue("@CartId", data.cartId);
-                            deleteCmd.ExecuteNonQuery();
-                        }
-                        else
-                        {
-                            var updateCmd = new MySqlCommand(
-                                "UPDATE cart SET Quantity = Quantity - 1 WHERE UserId=@UserId AND CartId=@CartId", conn);
-                            updateCmd.Parameters.AddWithValue("@UserId", userId);
-                            updateCmd.Parameters.AddWithValue("@CartId", data.cartId);
-                            updateCmd.ExecuteNonQuery();
-                        }
-                    }
-
-                    // Return updated cart
-                    var cartList = new List<object>();
-                    var getCartCmd = new MySqlCommand(
-                        "SELECT CartId, ProductName, Price, Quantity, Image FROM cart WHERE UserId=@UserId", conn);
-                    getCartCmd.Parameters.AddWithValue("@UserId", userId);
-                    
-                    using (var reader = getCartCmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            cartList.Add(new
-                            {
-                                cartId = Convert.ToInt32(reader["CartId"]),
-                                name = reader["ProductName"].ToString(),
-                                price = Convert.ToDecimal(reader["Price"]),
-                                quantity = Convert.ToInt32(reader["Quantity"]),
-                                image = reader["Image"].ToString()
-                            });
-                        }
-                    }
-
-                    return Json(new { success = true, cart = cartList });
-                }
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = ex.Message });
-            }
+            item.Quantity++;
+        }
+        else if (data.action == "decrease")
+        {
+            if (item.Quantity <= 1)
+                _context.Cart.Remove(item);
+            else
+                item.Quantity--;
         }
 
-        [HttpPost]
-        public IActionResult RemoveItem([FromBody] RemoveRequest data)
+        await _context.SaveChangesAsync();
+
+        var cart = await GetCartList(userId);
+        return Json(new { success = true, cart });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> UpdateQuantityInput([FromBody] UpdateQuantityInputRequest data)
+    {
+        var userId = HttpContext.Session.GetString("UserId");
+        if (string.IsNullOrEmpty(userId))
+            return Json(new { success = false, message = "Not logged in" });
+
+        var item = await _context.Cart
+            .FirstOrDefaultAsync(c => c.CartId == data.cartId && c.UserId == userId);
+
+        if (item == null)
+            return Json(new { success = false, message = "Item not found" });
+
+        item.Quantity = data.quantity;
+        await _context.SaveChangesAsync();
+
+        var cart = await GetCartList(userId);
+        return Json(new { success = true, cart });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> RemoveItem([FromBody] RemoveRequest data)
+    {
+        var userId = HttpContext.Session.GetString("UserId");
+        if (string.IsNullOrEmpty(userId))
+            return Json(new { success = false, message = "Not logged in" });
+
+        var item = await _context.Cart
+            .FirstOrDefaultAsync(c => c.CartId == data.CartId && c.UserId == userId);
+
+        if (item != null)
         {
-            var userId = HttpContext.Session.GetString("UserId");
-
-            using (var conn = new MySqlConnection(connectionString))
-            {
-                conn.Open();
-
-                var cmd = new MySqlCommand(
-                    "DELETE FROM cart WHERE CartId=@CartId AND UserId=@UserId",
-                    conn
-                );
-
-                cmd.Parameters.AddWithValue("@CartId", data.CartId);
-                cmd.Parameters.AddWithValue("@UserId", userId);
-
-                cmd.ExecuteNonQuery();
-            }
-
-            return Json(new { success = true });
+            _context.Cart.Remove(item);
+            await _context.SaveChangesAsync();
         }
+
+        return Json(new { success = true });
+    }
+
+    [HttpGet("/api/user/status")]
+    public IActionResult GetStatus()
+    {
+        if (User.Identity.IsAuthenticated)
+            return Ok(new { loggedIn = true, username = User.Identity.Name });
+        return Ok(new { loggedIn = false });
+    }
+
+    // ================================
+    // HELPER
+    // ================================
+    private async Task<List<object>> GetCartList(string userId)
+    {
+        return await _context.Cart
+            .Where(c => c.UserId == userId)
+            .Select(c => (object)new
+            {
+                cartId   = c.CartId,
+                name     = c.ProductName,
+                price    = c.Price,
+                quantity = c.Quantity,
+                image    = c.Image
+            })
+            .ToListAsync();
+    }
 }
-
-

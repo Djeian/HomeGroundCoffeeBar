@@ -3588,3 +3588,49 @@ a.btn.btn-google {
     display: none;
   }
 }
+
+
+.out-of-stock-badge {
+    display: inline-block;
+    background: #e63946;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-top: 4px;
+    text-transform: uppercase;
+}
+
+.product-card:has(.out-of-stock-badge) {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+
+.btn-track-rider {
+    padding: 8px 18px;
+    background: linear-gradient(135deg, #614c3a 0%, #4e3b2d 100%);
+    border: none;
+    color: white;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Poppins', sans-serif;
+    box-shadow: 0 2px 8px rgba(97, 76, 58, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-track-rider:hover {
+    background: linear-gradient(135deg, #4e3b2d 0%, #3d2e21 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(97, 76, 58, 0.5);
+}
+
+.btn-track-rider:active {
+    transform: translateY(0);
+}

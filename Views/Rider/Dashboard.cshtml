@@ -1,0 +1,34 @@
+@{
+    ViewData["Title"] = "Rider Dashboard";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<head>
+@* Add in head *@
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+</head>
+
+<div id="tab-deliveries" class="tab-content active">
+    <div class="orders-toolbar">
+        <input type="text" id="riderSearch" placeholder="Search deliveries..." class="order-search-input" />
+        <div class="status-filters">
+            <button class="status-filter active" data-status="all">All</button>
+            <button class="status-filter" data-status="Preparing">Preparing</button>
+            <button class="status-filter" data-status="Pickup">Pickup</button>
+            <button class="status-filter" data-status="Otw">On the Way</button>
+        </div>
+    </div>
+
+    <div class="gps-status-bar" id="gpsStatusBar" style="display:none;">
+        <span>📡 Sharing live location...</span>
+        <span id="gpsCoords"></span>
+    </div>
+
+    <div id="rider-cards" class="rider-cards-grid"></div>
+</div>
+
+@section Scripts {
+<script src="~/js/rider-dashboard.js"></script>
+}

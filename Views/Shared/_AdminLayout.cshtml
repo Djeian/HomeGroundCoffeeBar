@@ -4,63 +4,99 @@
     <meta charset="utf-8" />
     <link rel="icon" type="image/x-icon" href="~/img/icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Admin</title>
+    <title>@ViewData["Title"] - @ViewBag.RoleTitle</title>
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
 </head>
 <body>
+@{
+    var role      = Context.Session.GetString("Role");
+    var adminName = Context.Session.GetString("Name");
+    var adminPic  = Context.Session.GetString("ProfilePic");
+    string finalPic = string.IsNullOrWhiteSpace(adminPic)
+        ? "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQBkA9WO3FnL4fddebhCcTztCr6vr2METdo9w&s"
+        : adminPic;
 
-    <header class="title-adminPage">
-    <h1>Admin page</h1>
+    string roleTitle = role switch
+    {
+        "SuperAdmin" => "Super Admin",
+        "Admin"      => "Admin",
+        "Employee"   => "Employee",
+        "Rider"      => "Rider",
+        _            => "Dashboard"
+    };
+}
+
+<header class="title-adminPage">
+    <h1>@roleTitle Dashboard</h1>
 
     <div class="logo">
         <img src="/img/logowhite.png" alt="Logo">
     </div>
 
-    <div class="tab-container">
-        <button class="tab-btn active" data-tab="users">Users</button>
-        <div class="tab-divider"></div>
-        <button class="tab-btn" data-tab="orders">Orders</button>
-    </div>
-
-    @* Profile wrapper for admin *@
-    @{
-        var adminName = Context.Session.GetString("Name");
-        var adminPic = Context.Session.GetString("ProfilePic");
-        string finalPic = string.IsNullOrWhiteSpace(adminPic) 
-            ? "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQBkA9WO3FnL4fddebhCcTztCr6vr2METdo9w&s" 
-            : adminPic;
+    <!-- Tabs — shown per role -->
+        @if (role == "SuperAdmin")
+        {
+            <div class="tab-container">
+                <button class="tab-btn active" data-tab="sales">Sales</button>
+                <div class="tab-divider"></div>
+                <button class="tab-btn" data-tab="earnings">Earnings</button>
+                <div class="tab-divider"></div>
+                <button class="tab-btn" data-tab="users">Users</button>
+            </div>
+        }
+        else if (role == "Admin")
+        {
+            <div class="tab-container">
+                <button class="tab-btn active" data-tab="sales">Sales</button>
+                <div class="tab-divider"></div>
+                <button class="tab-btn" data-tab="orders">Orders</button>
+                <div class="tab-divider"></div>
+                <button class="tab-btn" data-tab="users">Users</button>
+                <div class="tab-divider"></div>
+                <button class="tab-btn" data-tab="products">Products</button>
+                <div class="tab-divider"></div>
+                <button class="tab-btn" data-tab="settings">Settings</button>
+            </div>
+        }
+    else if (role == "Employee")
+    {
+        <div class="tab-container">
+            <button class="tab-btn active" data-tab="orders">Orders</button>
+            <div class="tab-divider"></div>
+            <button class="tab-btn" data-tab="products">Products</button>
+        </div>
     }
+    else if (role == "Rider")
+    {
+        <div class="tab-container">
+            <button class="tab-btn active" data-tab="deliveries">Deliveries</button>
+        </div>
+    }
+
+    
 
     <div class="profile-wrapper">
         <img src="@finalPic?v=@DateTime.Now.Ticks" alt="Profile" class="profile-img" />
-
         <div class="profile-dropdown">
-            <p class="profile-name">Admin</p>
+            <p class="profile-name">@adminName</p>
+            <p class="profile-role-badge">@roleTitle</p>
             <a asp-controller="Account" asp-action="Logout">Logout</a>
         </div>
     </div>
 </header>
 
+<main role="main" class="pb-3">
+    @RenderBody()
+</main>
 
+<div class="footer">
+    <span id="footer-info"></span>
+</div>
 
-    <main role="main" class="pb-3">
-        @RenderBody()
-    </main>
-
-
-    <div class="footer">
-        Total accounts: <span id="total-accounts">0</span>
-        Total orders  : <span id="total-orders">0</span>
-      
-    </div>
-
-
-
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/admin.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -1,0 +1,121 @@
+@{
+    ViewData["Title"] = "Super Admin";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<!-- SALES TAB -->
+<div id="tab-sales" class="tab-content active">
+    <div class="period-filter-bar">
+        <button class="period-btn active" data-period="day">Today</button>
+        <button class="period-btn" data-period="month">This Month</button>
+        <button class="period-btn" data-period="year">This Year</button>
+        <button class="period-btn" data-period="all">All Time</button>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📦</div>
+            <div class="stat-info">
+                <span class="stat-label">Total Orders</span>
+                <span class="stat-value" id="totalOrders">—</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+                <span class="stat-label">Total Sales</span>
+                <span class="stat-value" id="totalSales">—</span>
+            </div>
+        </div>
+        <div class="stat-card highlight">
+            <div class="stat-icon">🧑‍💻</div>
+            <div class="stat-info">
+                <span class="stat-label">Developer Earnings (3%)</span>
+                <span class="stat-value" id="devEarnings">—</span>
+            </div>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Order ID</th><th>Customer</th><th>Payment</th><th>Total</th><th>3% Earning</th><th>Date</th></tr>
+        </thead>
+        <tbody id="superadmin-orders-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:40px;color:#888;">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- EARNINGS TAB -->
+<div id="tab-earnings" class="tab-content" style="display:none;">
+    <div class="stats-grid">
+        <div class="stat-card highlight">
+            <div class="stat-icon">💵</div>
+            <div class="stat-info">
+                <span class="stat-label">All-Time Developer Earnings</span>
+                <span class="stat-value" id="allTimeEarnings">—</span>
+            </div>
+        </div>
+    </div>
+    <p style="padding:20px;color:#888;">Earnings = 3% of all completed orders</p>
+</div>
+
+<!-- USERS TAB -->
+<div id="tab-users" class="tab-content" style="display:none;">
+    <div style="padding:20px; display:flex; justify-content:space-between; align-items:center;">
+        <input type="text" id="superUserSearch" placeholder="Search users..." class="order-search-input" />
+        <button id="addUserBtn" class="save-status-btn">+ Add User</button>
+    </div>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Name</th><th>Phone</th><th>Role</th><th>Points</th><th>Joined</th><th>Action</th></tr>
+        </thead>
+        <tbody id="superadmin-users-tbody">
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:#888;">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- ADD USER MODAL -->
+<div id="addUserModal" class="order-modal-overlay" style="display:none;">
+    <div class="order-modal" style="max-width:450px;">
+        <div class="order-modal-header">
+            <h2>Add New User</h2>
+            <button id="closeAddUserModal" class="order-modal-close">✕</button>
+        </div>
+        <div class="order-modal-body">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Name</label>
+                    <input type="text" id="newUserName" placeholder="Full name"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;" />
+                </div>
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Phone</label>
+                    <input type="text" id="newUserPhone" placeholder="09XXXXXXXXX" maxlength="11"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;" />
+                </div>
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Password</label>
+                    <input type="password" id="newUserPassword" placeholder="Password"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;" />
+                </div>
+                <div>
+                    <label style="color:#6B5743;font-size:12px;text-transform:uppercase;">Role</label>
+                    <select id="newUserRole"
+                        style="width:100%;padding:10px;background:#3A322B;border:1px solid #4f4439;border-radius:8px;color:#CCBEA8;margin-top:4px;">
+                        <option value="User">User</option>
+                        <option value="Employee">Employee</option>
+                        <option value="Rider">Rider</option>
+                        <option value="Admin">Admin</option>
+                        <option value="SuperAdmin">SuperAdmin</option>
+                    </select>
+                </div>
+                <button id="submitAddUser" class="save-status-btn" style="margin-top:8px;">Create User</button>
+                <p id="addUserMsg" style="display:none; margin:0;"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="~/js/superadmin-dashboard.js"></script>
+}

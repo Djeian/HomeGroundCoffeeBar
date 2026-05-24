@@ -38,7 +38,16 @@ public HomeController(ILogger<HomeController> logger, ApplicationDbContext conte
     }
 
     public IActionResult Privacy() => View();
-    public IActionResult Menu() => View();
+    public async Task<IActionResult> Menu()
+    {
+        var products = await _context.Products
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.Category)
+            .ThenBy(p => p.Name)
+            .ToListAsync();
+
+        return View(products);
+    }
     public IActionResult Signin() => View();
     public IActionResult Signup() => View();
     public IActionResult Cart() => View();
@@ -102,6 +111,17 @@ public HomeController(ILogger<HomeController> logger, ApplicationDbContext conte
             }).ToList()
         };
 
+        foreach (var cartItem in cartItems)
+        {
+            var product = await _context.Products
+                .FirstOrDefaultAsync(p => p.Name == cartItem.ProductName);
+
+            if (product != null && product.Stock > 0)
+                product.Stock -= cartItem.Quantity;
+        }
+
+        await _context.SaveChangesAsync();
+
         _context.Orders.Add(order);
 
         // Only award points and clear cart for COD (instant)
@@ -129,6 +149,15 @@ public HomeController(ILogger<HomeController> logger, ApplicationDbContext conte
         
     }*/
 
+[HttpGet]
+public async Task<IActionResult> GetPaymentSettings()
+{
+    var codSetting = await _context.AppSettings
+        .FirstOrDefaultAsync(s => s.Key == "cod_enabled");
+
+    bool codEnabled = codSetting == null || codSetting.Value == "true";
+    return Json(new { codEnabled });
+}
     
 
 
@@ -261,6 +290,8 @@ public async Task<IActionResult> ConfirmOrder(string orderId)
     return Json(new { success = true });
 }
 
+
+
 public async Task<IActionResult> OrderHistory()
 {
     var userIdStr = HttpContext.Session.GetString("UserId");
@@ -310,6 +341,24 @@ public async Task<IActionResult> UpdateMyOrderStatus([FromBody] UpdateStatusRequ
     await _context.SaveChangesAsync();
 
     return Json(new { success = true });
+}
+
+[HttpGet]
+public async Task<IActionResult> GetRiderLocation(string orderId)
+{
+    var loc = await _context.RiderLocations
+        .FirstOrDefaultAsync(r => r.OrderId == orderId);
+
+    if (loc == null)
+        return Json(new { found = false });
+
+    return Json(new
+    {
+        found     = true,
+        latitude  = loc.Latitude,
+        longitude = loc.Longitude,
+        updatedAt = loc.UpdatedAt.ToString("hh:mm:ss tt")
+    });
 }
 }
 

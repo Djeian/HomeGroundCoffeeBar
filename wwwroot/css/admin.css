@@ -549,3 +549,232 @@ td a:hover {
 }
 
 .save-status-btn:hover { background: #4e3b2d; }
+
+
+/* Stats Grid */
+.stats-grid {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    flex: 1;
+    min-width: 200px;
+    background: #3A322B;
+    border: 1px solid #4f4439;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.stat-card.highlight {
+    border-color: #614c3a;
+    background: rgba(97,76,58,0.3);
+}
+
+.stat-icon { font-size: 32px; }
+
+.stat-label {
+    display: block;
+    font-size: 12px;
+    color: #6B5743;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: #CCBEA8;
+}
+
+/* Period Filter */
+.period-filter-bar {
+    display: flex;
+    gap: 8px;
+    padding: 20px 20px 0;
+    flex-wrap: wrap;
+}
+
+.period-btn {
+    padding: 7px 18px;
+    border-radius: 20px;
+    border: 1px solid #4f4439;
+    background: #3A322B;
+    color: #CCBEA8;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Poppins', sans-serif;
+}
+
+.period-btn:hover { background: #4f4439; }
+.period-btn.active { background: #CCBEA8; color: #2A241E; border-color: #CCBEA8; }
+
+.section-header {
+    padding: 20px 20px 10px;
+}
+
+.section-header h2 {
+    color: #CCBEA8;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* Profile role badge */
+.profile-role-badge {
+    font-size: 11px;
+    background: #614c3a;
+    color: #CCBEA8;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    display: inline-block;
+}
+
+/* Rider Cards */
+.rider-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.rider-card {
+    background: #3A322B;
+    border: 1px solid #4f4439;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s;
+}
+
+.rider-card:hover { border-color: #CCBEA8; }
+
+.rider-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rider-order-id {
+    font-weight: 700;
+    color: #CCBEA8;
+    font-size: 15px;
+}
+
+.rider-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rider-detail {
+    font-size: 13px;
+    color: #B3A999;
+    display: flex;
+    gap: 8px;
+}
+
+/* Product Admin Cards */
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    padding: 20px;
+}
+
+.product-admin-card {
+    background: #3A322B;
+    border: 1px solid #4f4439;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.product-admin-card:hover { border-color: #CCBEA8; }
+
+.product-admin-card img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+}
+
+.product-admin-info {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.product-admin-name {
+    font-weight: 700;
+    color: #CCBEA8;
+    font-size: 15px;
+}
+
+.product-admin-price {
+    color: #B3A999;
+    font-size: 14px;
+}
+
+.product-admin-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    align-items: center;
+}
+
+.product-admin-actions {
+    padding: 12px 14px;
+    display: flex;
+    gap: 8px;
+    border-top: 1px solid #4f4439;
+}
+
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+    cursor: pointer;
+}
+
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+.toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: #4f4439;
+    border-radius: 28px;
+    transition: 0.3s;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    left: 4px;
+    bottom: 4px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+.toggle-switch input:checked + .toggle-slider { background: #614c3a; }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(24px); }
+
+.track-btn { margin-top: 8px; width: 100%; text-align: center; }

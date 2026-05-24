@@ -1,10 +1,10 @@
+@model List<HomeGroundCoffeeBar.Models.Product>
 @{
     ViewData["Title"] = "Menu";
     ViewData["Page"] = "menu";
 }
 
-
-<div class="banner" >
+<div class="banner">
     <div class="text-class">
         <h1 class="banner-text">Warm it. Chill it. <br>Feel it.</h1>
         <p class="banner-paragraph">Embrace the moment with smooth sips<br>and perfectly balanced blends.</p>
@@ -13,13 +13,11 @@
 </div>
 
 <div class="menu-container" id="menu">
-
     <div class="menu-header">
         <h1 class="menu-title">Menu</h1>
     </div>
 
     <div class="menu-main">
-
         <div class="sidebar">
             <h2 class="category-title">Sips & Bites</h2>
             <ul class="category-list">
@@ -29,88 +27,27 @@
                 <li class="category-item" data-category="burger">Burger</li>
             </ul>
         </div>
-        
-        <div class="product-container">
 
+        <div class="product-container">
             <div class="title">
                 <h3 class="title-menu">
                     <span class="menu-path">Menu /</span>
                     <span class="menu-current">Sip & Bites</span>
                 </h3>
-                <span class="border-bottom"></span>
             </div>
 
-        
             <div class="product-card-container">
-                <div class="product-card" id="cold" data-price="120">
-                    <img src="~/img/Product/blueberry.png" alt="Blueberry" />
-                    <p>Blueberry</p>
-                </div>
-
-                <div class="product-card" id="cold" data-price="170" >
-                    <img src="~/img/Product/caramel_latte.png" alt="Caramel latte" />
-                    <p>Caramel latte</p>
-                </div>
-
-                <div class="product-card" id="burger" data-price="190" >
-                    <img src="~/img/Product/classic_aloha_burger.png" alt="Classic Aloha" />
-                    <p>Classic Aloha</p>
-                </div>
-
-                <div class="product-card" id="burger" data-price="210" >
-                    <img src="~/img/Product/classic_burger.png" alt="Classic Burger" />
-                    <p>Classic Burger</p>
-                </div>
-
-                <div class="product-card" id="cold" data-price="200" >
-                    <img src="~/img/Product/dirty_matcha_latte.png" alt="Dirty Matcha" />
-                    <p>Dirty Matcha Latte</p>
-                </div>
-
-                <div class="product-card" id="cold" data-price="120" >
-                    <img src="~/img/Product/green_apple.png" alt="Green Apple" />
-                    <p>Green Apple</p>
-                </div>
-
-                <div class="product-card" id="hot" data-price="170" >
-                    <img src="~/img/Product/hot_milk_chocolate.png" alt="Hot Milk Chocolate" />
-                    <p>Hot Milk Chocolate</p>
-                </div>
-
-                <div class="product-card" id="cold" data-price="170" >`
-                    <img src="~/img/Product/iced_milk_chocolate.png" alt="Iced Milk Chocolate" />
-                    <p>Iced Milk Chocolate</p>
-                </div>
-
-                <div class="product-card" id="cold" data-price="170" >
-                    <img src="~/img/Product/iced_milk_strawberry.png" alt="Iced Milk Strawberry" />
-                    <p>Iced Milk Strawberry</p>
-                </div>
-
-                <div class="product-card" id="cold" data-price="210" >
-                    <img src="~/img/Product/matcha_latte_oat.png" alt="Matcha Latte Oat" />
-                    <p>Matcha Latte Oat</p>
-                </div>
-
-                <div class="product-card" id="cold" data-price="120" >
-                    <img src="~/img/Product/peach.png" alt="Peach" />
-                    <p>Peach</p>
-                </div>
-
-                <div class="product-card" id="burger" data-price="230" >
-                    <img src="~/img/Product/signature_barbeque.png" alt="Signature Barbeque" />
-                    <p>Signature Barbeque</p>
-                </div>
-
-                <div class="product-card" id="cold" data-price="180" >
-                    <img src="~/img/Product/spanish_latte.png" alt="Spanish Latte" />
-                    <p>Spanish Latte</p>
-                </div>
-                
-                <div class="product-card" id="cold" data-price="180" >
-                    <img src="~/img/Product/white_mocha_latte.png" alt="White Mocha" />
-                    <p>White Mocha Latte</p>
-                </div>
+                @foreach (var product in Model)
+                {
+                    <div class="product-card" id="@product.Category" data-price="@product.Price">
+                        <img src="@product.Image" alt="@product.Name" />
+                        <p>@product.Name</p>
+                        @if (product.Stock <= 0)
+                        {
+                            <span class="out-of-stock-badge">Out of Stock</span>
+                        }
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -120,7 +57,3 @@
     <span class="cart-icon">🛒</span>
     <span class="cart-count">0</span>
 </button>
-
-
-
-

@@ -1,0 +1,216 @@
+@{
+    ViewData["Title"] = "Employee Dashboard";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<!-- ORDERS TAB -->
+<div id="tab-orders" class="tab-content active">
+    <div class="orders-toolbar">
+        <input type="text" id="empOrderSearch" placeholder="Search orders..." class="order-search-input" />
+        <div class="status-filters">
+            <button class="status-filter active" data-status="all">All</button>
+            <button class="status-filter" data-status="Pending">Pending</button>
+            <button class="status-filter" data-status="Confirmed">Confirmed</button>
+            <button class="status-filter" data-status="Preparing">Preparing</button>
+            <button class="status-filter" data-status="Pickup">Pickup</button>
+            <button class="status-filter" data-status="Otw">On the Way</button>
+            <button class="status-filter" data-status="Delivered">Delivered</button>
+            <button class="status-filter" data-status="Completed">Completed</button>
+            <button class="status-filter" data-status="Cancelled">Cancelled</button>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Order ID</th><th>Customer</th><th>Phone</th><th>Total</th><th>Status</th><th>Date</th></tr>
+        </thead>
+        <tbody id="emp-orders-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:40px;color:#888;">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- PRODUCTS TAB -->
+<div id="tab-products" class="tab-content" style="display:none;">
+    <div style="padding:20px;">
+        <input type="text" id="empProductSearch" placeholder="Search products..." class="order-search-input" />
+    </div>
+    <div id="emp-products-grid" class="products-grid"></div>
+</div>
+
+<!-- ORDER DETAIL MODAL (same as admin) -->
+<div id="orderModal" class="order-modal-overlay" style="display:none;">
+    <div class="order-modal">
+        <div class="order-modal-header">
+            <h2>Order Details</h2>
+            <button class="order-modal-close" id="closeOrderModal">✕</button>
+        </div>
+        <div class="order-modal-body">
+            <div class="order-detail-grid">
+                <div class="order-detail-item"><span class="detail-label">Order ID</span><span class="detail-value" id="modal-orderId"></span></div>
+                <div class="order-detail-item"><span class="detail-label">Date</span><span class="detail-value" id="modal-date"></span></div>
+                <div class="order-detail-item"><span class="detail-label">Customer</span><span class="detail-value" id="modal-name"></span></div>
+                <div class="order-detail-item"><span class="detail-label">Phone</span><span class="detail-value" id="modal-phone"></span></div>
+                <div class="order-detail-item full-width"><span class="detail-label">Address</span><span class="detail-value" id="modal-address"></span></div>
+            </div>
+            <div class="order-modal-items">
+                <h3>Order Items</h3>
+                <div id="modal-items"></div>
+            </div>
+            <div class="order-modal-totals">
+                <div class="modal-total-row"><span>Subtotal</span><span id="modal-subtotal"></span></div>
+                <div class="modal-total-row"><span>Delivery Fee</span><span id="modal-delivery"></span></div>
+                <div class="modal-total-row grand"><span>Total</span><span id="modal-total"></span></div>
+            </div>
+            <div class="order-modal-status">
+                <h3>Update Status</h3>
+                <div class="status-update-controls">
+                    <select id="modal-status-select">
+                        <option value="Pending">Pending</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Preparing">Preparing</option>
+                        <option value="Pickup">Pickup</option>
+                        <option value="Otw">On the Way</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                    <button id="saveStatusBtn" class="save-status-btn">Save Status</button>
+                </div>
+                <p id="statusSaveMsg" style="display:none; color:#4CAF50; margin-top:8px;">Status updated!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Rider Tracking Modal -->
+<div id="trackingModal" style="
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.7); z-index:1000;
+    align-items:center; justify-content:center; padding:20px;">
+    <div style="
+        background:#1F1B16; border-radius:16px;
+        width:100%; max-width:600px;
+        border:1px solid #4f4439;
+        overflow:hidden;">
+        <div style="
+            display:flex; justify-content:space-between; align-items:center;
+            padding:16px 20px; border-bottom:1px solid #4f4439;">
+            <h2 style="color:#CCBEA8; margin:0; font-size:18px;">📍 Live Rider Tracking</h2>
+            <button id="closeTrackingModal" style="
+                background:none; border:none; color:#CCBEA8;
+                font-size:20px; cursor:pointer;">✕</button>
+        </div>
+        <div id="trackingMap" style="height:350px; width:100%;"></div>
+        <div style="padding:16px 20px; color:#B3A999; font-size:13px;">
+            <span id="trackingStatus">Fetching rider location...</span>
+            <span id="trackingTime" style="float:right;"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+let trackingMap     = null;
+let riderMarker     = null;
+let trackingInterval = null;
+let trackingOrderId  = null;
+
+document.addEventListener('click', async function (e) {
+
+    // CANCEL ORDER
+    if (e.target.classList.contains('btn-cancel-order')) {
+        if (!confirm('Are you sure you want to cancel this order?')) return;
+        const orderId = e.target.dataset.orderid;
+        const res = await fetch('/Home/UpdateMyOrderStatus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId, status: 'Cancelled' })
+        });
+        const data = await res.json();
+        if (data.success) location.reload();
+        else alert(data.message);
+    }
+
+    // ORDER RECEIVED
+    if (e.target.classList.contains('btn-order-received')) {
+        if (!confirm('Confirm that you have received your order?')) return;
+        const orderId = e.target.dataset.orderid;
+        const res = await fetch('/Home/UpdateMyOrderStatus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId, status: 'Completed' })
+        });
+        const data = await res.json();
+        if (data.success) location.reload();
+        else alert(data.message);
+    }
+
+    // TRACK RIDER
+    if (e.target.classList.contains('btn-track-rider')) {
+        trackingOrderId = e.target.dataset.orderid;
+        openTrackingModal(trackingOrderId);
+    }
+});
+
+function openTrackingModal(orderId) {
+    const modal = document.getElementById('trackingModal');
+    modal.style.display = 'flex'; // ← make sure it's flex not block
+
+    if (!trackingMap) {
+        setTimeout(() => { // ← delay needed for map to initialize after display
+            trackingMap = L.map('trackingMap').setView([14.5995, 120.9842], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(trackingMap);
+
+            fetchRiderLocation(orderId);
+            trackingInterval = setInterval(() => fetchRiderLocation(orderId), 5000);
+        }, 100);
+    } else {
+        trackingMap.invalidateSize();
+        fetchRiderLocation(orderId);
+        trackingInterval = setInterval(() => fetchRiderLocation(orderId), 5000);
+    }
+}
+
+async function fetchRiderLocation(orderId) {
+    const res  = await fetch(`/Home/GetRiderLocation?orderId=${orderId}`);
+    const data = await res.json();
+
+    if (!data.found) {
+        document.getElementById('trackingStatus').textContent = 'Rider location not available yet.';
+        return;
+    }
+
+    const lat = data.latitude;
+    const lng = data.longitude;
+
+    document.getElementById('trackingStatus').textContent = `Rider is on the way!`;
+    document.getElementById('trackingTime').textContent   = `Updated: ${data.updatedAt}`;
+
+    if (!riderMarker) {
+        riderMarker = L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: '',
+                html: '<div style="background:#614c3a;width:20px;height:20px;border-radius:50%;border:3px solid #CCBEA8;box-shadow:0 0 8px rgba(204,190,168,0.6);"></div>',
+                iconAnchor: [10, 10]
+            })
+        }).addTo(trackingMap);
+    } else {
+        riderMarker.setLatLng([lat, lng]);
+    }
+
+    trackingMap.setView([lat, lng], 15);
+}
+
+document.getElementById('closeTrackingModal')?.addEventListener('click', () => {
+    clearInterval(trackingInterval);
+    trackingInterval = null;
+    trackingOrderId  = null;
+    document.getElementById('trackingModal').style.display = 'none';
+});
+</script>
+
+@section Scripts {
+<script src="~/js/employee-dashboard.js"></script>
+}

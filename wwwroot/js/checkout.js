@@ -1,6 +1,22 @@
 window.currentStep = 1;
 
 document.addEventListener('DOMContentLoaded', function () {
+    // Check if COD is enabled
+    fetch('/Home/GetPaymentSettings')
+    .then(res => res.json())
+    .then(data => {
+        if (!data.codEnabled) {
+            const codOption = document.querySelector('input[value="cod"]');
+            if (codOption) {
+                codOption.closest('.payment-option').style.display = 'none';
+                // Auto-select gcash if cod is hidden
+                const gcash = document.querySelector('input[value="gcash"]');
+                if (gcash) gcash.checked = true;
+            }
+        }
+    });
+
+
     if (!document.getElementById('personalInfoForm')) return;
 
     loadCartItems();
@@ -93,23 +109,30 @@ function updateNavigationButtons() {
 }
 
 function validatePersonalInfo() {
-
     const fullName      = document.getElementById('fullName').value.trim();
     const email         = document.getElementById('email').value.trim();
     const streetAddress = document.getElementById('streetAddress').value.trim();
-    const state         = document.getElementById('state').value.trim();
     const city          = document.getElementById('city').value.trim();
     const zipCode       = document.getElementById('zipCode').value.trim();
 
-
-    if (!fullName || !email || !streetAddress || !state || !city || !zipCode) {
+    if (!fullName || !email || !streetAddress || !city || !zipCode) {
         alert('Please fill in all required fields.');
+        return false;
+    }
+
+    if (fullName.length < 3) {
+        alert('Full name must be at least 3 characters.');
         return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         alert('Please enter a valid email address.');
+        return false;
+    }
+
+    if (streetAddress.length < 5) {
+        alert('Please enter a valid street address.');
         return false;
     }
 
@@ -130,7 +153,7 @@ function processOrder() {
         const payload = {
             fullName:      document.getElementById('fullName').value.trim(),
             streetAddress: document.getElementById('streetAddress').value.trim(),
-            state:         document.getElementById('state').value.trim(),
+            state:         'Cavite',
             city:          document.getElementById('city').value.trim(),
             zipCode:       document.getElementById('zipCode').value.trim(),
             paymentMethod: document.querySelector('input[name="paymentMethod"]:checked').value,

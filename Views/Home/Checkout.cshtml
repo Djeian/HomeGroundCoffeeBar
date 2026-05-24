@@ -47,24 +47,52 @@
 
                 <div class="form-group">
                     <label for="streetAddress">Street Address</label>
-                    <input type="text" id="streetAddress" name="streetAddress" placeholder="123 Main Street" required />
+                    <input type="text" id="streetAddress" name="streetAddress" placeholder="House No., Street, Subdivision/Barangay" required />
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="state">State/Province</label>
-                        <input type="text" id="state" name="state" placeholder="Cavite" required />
+                        <label for="city">Municipality / City</label>
+                        <select id="city" name="city" required onchange="updateBarangays()">
+                            <option value="">Select Municipality/City</option>
+                            <option value="Bacoor">Bacoor</option>
+                            <option value="Cavite City">Cavite City</option>
+                            <option value="Dasmariñas">Dasmariñas</option>
+                            <option value="General Trias">General Trias</option>
+                            <option value="Imus">Imus</option>
+                            <option value="Tagaytay">Tagaytay</option>
+                            <option value="Trece Martires">Trece Martires</option>
+                            <option value="Alfonso">Alfonso</option>
+                            <option value="Amadeo">Amadeo</option>
+                            <option value="carmona">Carmona</option>
+                            <option value="General Emilio Aguinaldo">General Emilio Aguinaldo</option>
+                            <option value="General Mariano Alvarez">General Mariano Alvarez</option>
+                            <option value="Indang">Indang</option>
+                            <option value="Kawit">Kawit</option>
+                            <option value="Magallanes">Magallanes</option>
+                            <option value="Maragondon">Maragondon</option>
+                            <option value="Mendez">Mendez</option>
+                            <option value="Naic">Naic</option>
+                            <option value="Noveleta">Noveleta</option>
+                            <option value="Rosario">Rosario</option>
+                            <option value="Silang">Silang</option>
+                            <option value="Tanza">Tanza</option>
+                            <option value="Ternate">Ternate</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="city">City</label>
-                        <input type="text" id="city" name="city" placeholder="Bacoor" required />
+                        <label for="state">Province</label>
+                        <input type="text" id="state" name="state" value="Cavite" readonly
+                            style="background:rgba(97,76,58,0.1); cursor:not-allowed;" />
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="zipCode">Zip/Postal Code</label>
-                        <input type="text" id="zipCode" name="zipCode" placeholder="4102" required />
+                        <label for="zipCode">Zip Code</label>
+                        <select id="zipCode" name="zipCode" required>
+                            <option value="">Select City first</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -168,5 +196,54 @@
 
 
 <script src="~/js/checkout.js"></script>
+
+<script>
+const caviteZipCodes = {
+    'Bacoor':                      '4102',
+    'Cavite City':                 '4100',
+    'Dasmariñas':                  '4114',
+    'General Trias':               '4107',
+    'Imus':                        '4103',
+    'Tagaytay':                    '4120',
+    'Trece Martires':              '4109',
+    'Alfonso':                     '4123',
+    'Amadeo':                      '4119',
+    'Carmona':                     '4116',
+    'General Emilio Aguinaldo':    '4121',
+    'General Mariano Alvarez':     '4117',
+    'Indang':                      '4122',
+    'Kawit':                       '4104',
+    'Magallanes':                  '4113',
+    'Maragondon':                  '4112',
+    'Mendez':                      '4124',
+    'Naic':                        '4110',
+    'Noveleta':                    '4105',
+    'Rosario':                     '4106',
+    'Silang':                      '4118',
+    'Tanza':                       '4108',
+    'Ternate':                     '4111',
+};
+
+function updateBarangays() {
+    const city    = document.getElementById('city').value;
+    const zipSel  = document.getElementById('zipCode');
+
+    zipSel.innerHTML = '';
+
+    if (!city) {
+        zipSel.innerHTML = '<option value="">Select City first</option>';
+        return;
+    }
+
+    const zip = caviteZipCodes[city];
+    if (zip) {
+        const option    = document.createElement('option');
+        option.value    = zip;
+        option.textContent = zip;
+        option.selected = true;
+        zipSel.appendChild(option);
+    }
+}
+</script>
 
 

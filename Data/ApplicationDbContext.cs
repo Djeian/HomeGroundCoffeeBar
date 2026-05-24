@@ -16,6 +16,11 @@
             public DbSet<UserModel> Users { get; set; }
             public DbSet<Cart> Cart { get; set; }
             public DbSet<Order> Orders { get; set; }
+            public DbSet<Product> Products { get; set; }
+            public DbSet<RiderLocation> RiderLocations { get; set; }
+
+            public DbSet<AppSetting> AppSettings { get; set; }
+
 
         }
     }

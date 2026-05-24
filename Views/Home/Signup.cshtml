@@ -63,41 +63,77 @@
 
 
 <script>
-    console.log("Hello");
+document.getElementById("signupForm").addEventListener("submit", function(event) {
+    const name            = document.getElementById("name").value.trim();
+    const phone           = document.getElementById("phone").value.trim();
+    const password        = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
 
-    document.getElementById("signupForm").addEventListener("submit", function(event) {
-        const password = document.getElementById("password").value;
-        const confirmPassword = document.getElementById("confirmPassword").value;
+    // Name
+    if (name.length < 3) {
+        event.preventDefault();
+        Swal.fire({ icon: 'error', title: 'Invalid Name', text: 'Name must be at least 3 characters.', confirmButtonColor: '#614c3a' });
+        return;
+    }
 
+    if (name.length > 18) {
+        event.preventDefault();
+        Swal.fire({ icon: 'error', title: 'Invalid Name', text: 'Name must not exceed 18 characters.', confirmButtonColor: '#614c3a' });
+        return;
+    }
 
-        if (password !== confirmPassword) {
-            event.preventDefault();
+    // Phone
+    if (!/^\d{11}$/.test(phone)) {
+        event.preventDefault();
+        Swal.fire({ icon: 'error', title: 'Invalid Phone', text: 'Phone number must be exactly 11 digits.', confirmButtonColor: '#614c3a' });
+        return;
+    }
 
-            Swal.fire({
-                icon: 'error',
-                title: "Oops...",
-                title: 'Incorrect password',
-                confirmButtonColor: "#7066E0",
-                background: "#FFFFFF",
-                color: "#000000"
-            });
-        } 
-    });
+    if (!phone.startsWith('09')) {
+        event.preventDefault();
+        Swal.fire({ icon: 'error', title: 'Invalid Phone', text: 'Phone number must start with 09.', confirmButtonColor: '#614c3a' });
+        return;
+    }
 
+    // Password
+    if (password.length < 6) {
+        event.preventDefault();
+        Swal.fire({ icon: 'error', title: 'Weak Password', text: 'Password must be at least 6 characters.', confirmButtonColor: '#614c3a' });
+        return;
+    }
 
-    @if (TempData["SignupSuccess"] != null)
-        {
-            <text>
-            Swal.fire({
-                title: 'Account Created!',
-                text: 'Your account has been created successfully.',
-                icon: 'success',
-                confirmButtonText: 'OK'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = '/Home/Signin';
-                }
-            });
-            </text>
+    if (password !== confirmPassword) {
+        event.preventDefault();
+        Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'Passwords do not match.', confirmButtonColor: '#614c3a' });
+        return;
+    }
+});
+
+@if (TempData["SignupSuccess"] != null)
+{
+    <text>
+    Swal.fire({
+        title: 'Account Created!',
+        text: 'Your account has been created successfully.',
+        icon: 'success',
+        confirmButtonColor: '#614c3a'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = '/Home/Signin';
         }
+    });
+    </text>
+}
+
+@if (TempData["SignupError"] != null)
+{
+    <text>
+    Swal.fire({
+        icon: 'error',
+        title: 'Signup Failed',
+        text: '@TempData["SignupError"]',
+        confirmButtonColor: '#614c3a'
+    });
+    </text>
+}
 </script>

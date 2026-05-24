@@ -4,6 +4,12 @@
     ViewBag.Page = "orderHistory";
 }
 
+<link rel="stylesheet" href="/css/leaflet.css" />
+<link rel="stylesheet" href="/css/sweetalert2.min.css" />
+
+<script src="/js/leaflet.js"></script>
+<script src="/js/sweetalert2.min.js"></script>
+
 <div class="order-history-container">
     <div class="order-history-header">
         <h1>Order History</h1>
@@ -43,7 +49,7 @@
                                     <img src="@item.Image" alt="@item.ProductName" />
                                     <div class="order-item-info">
                                         <span class="item-name">@item.ProductName</span>
-<span class="item-qty">x@(item.Quantity)</span>
+                                    <span class="item-qty">x@(item.Quantity)</span>
                                      </div>
                                     <span class="item-price">
                                         ₱@((item.Price * item.Quantity).ToString("F2"))
@@ -91,11 +97,15 @@
                                                 Cancel Order
                                             </button>
                                         }
+                                        @if (order.Status == "Otw")
+                                        {
+                                            <button class="btn-track-rider" data-orderid="@order.OrderId">
+                                                Track Rider
+                                            </button>
+                                        }
                                         @if (order.Status == "Delivered")
                                         {
-                                            <button class="btn-order-received" data-orderid="@order.OrderId">
-                                                Order Received
-                                            </button>
+                                            <button class="btn-order-received" data-orderid="@order.OrderId">Order Received</button>
                                         }
                         </div>
                     </div>
@@ -348,45 +358,153 @@
 </style>
 
 
+<!-- Leaflet from CDN - more reliable than local -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Tracking Modal -->
+<div id="trackingModal" style="
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.7); z-index:9999;
+    align-items:center; justify-content:center; padding:20px;">
+    <div style="
+        background:#1F1B16; border-radius:16px;
+        width:100%; max-width:600px;
+        border:1px solid #4f4439; overflow:hidden;">
+        <div style="
+            display:flex; justify-content:space-between; align-items:center;
+            padding:16px 20px; border-bottom:1px solid #4f4439;">
+            <h2 style="color:#CCBEA8; margin:0; font-size:18px;">📍 Live Rider Tracking</h2>
+            <button id="closeTrackingModal" style="
+                background:none; border:none; color:#CCBEA8;
+                font-size:24px; cursor:pointer; line-height:1;">✕</button>
+        </div>
+        <div id="trackingMap" style="height:350px; width:100%;"></div>
+        <div style="padding:16px 20px; color:#B3A999; font-size:13px; display:flex; justify-content:space-between;">
+            <span id="trackingStatus">Fetching rider location...</span>
+            <span id="trackingTime"></span>
+        </div>
+    </div>
+</div>
+
 <script>
+let trackingMap      = null;
+let riderMarker      = null;
+let trackingInterval = null;
+
 document.addEventListener('click', async function (e) {
 
     // CANCEL ORDER
     if (e.target.classList.contains('btn-cancel-order')) {
         if (!confirm('Are you sure you want to cancel this order?')) return;
-
         const orderId = e.target.dataset.orderid;
-        const res = await fetch('/Home/UpdateMyOrderStatus', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ orderId, status: 'Cancelled' })
+        const res  = await fetch('/Home/UpdateMyOrderStatus', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId, status: 'Cancelled' })
         });
-
         const data = await res.json();
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.message);
-        }
+        if (data.success) location.reload();
+        else alert(data.message);
     }
 
     // ORDER RECEIVED
     if (e.target.classList.contains('btn-order-received')) {
         if (!confirm('Confirm that you have received your order?')) return;
-
         const orderId = e.target.dataset.orderid;
-        const res = await fetch('/Home/UpdateMyOrderStatus', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ orderId, status: 'Completed' })
+        const res  = await fetch('/Home/UpdateMyOrderStatus', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId, status: 'Completed' })
         });
-
         const data = await res.json();
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.message);
-        }
+        if (data.success) location.reload();
+        else alert(data.message);
     }
+
+    // TRACK RIDER
+    if (e.target.classList.contains('btn-track-rider')) {
+        const orderId = e.target.dataset.orderid;
+        openTrackingModal(orderId);
+    }
+});
+
+function openTrackingModal(orderId) {
+    const modal = document.getElementById('trackingModal');
+    modal.style.display = 'flex';
+
+    document.getElementById('trackingStatus').textContent = 'Fetching rider location...';
+    document.getElementById('trackingTime').textContent   = '';
+
+    // Clear old interval
+    if (trackingInterval) {
+        clearInterval(trackingInterval);
+        trackingInterval = null;
+    }
+
+    // Init map after modal is visible
+    setTimeout(() => {
+        if (!trackingMap) {
+            trackingMap = L.map('trackingMap').setView([14.5995, 120.9842], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(trackingMap);
+        } else {
+            trackingMap.invalidateSize();
+        }
+
+        // Fetch immediately then poll every 5s
+        fetchRiderLocation(orderId);
+        trackingInterval = setInterval(() => fetchRiderLocation(orderId), 5000);
+    }, 200);
+}
+
+async function fetchRiderLocation(orderId) {
+    try {
+        const res  = await fetch(`/Home/GetRiderLocation?orderId=${orderId}`);
+        const data = await res.json();
+
+        if (!data.found) {
+            document.getElementById('trackingStatus').textContent = 'Rider location not available yet. Waiting...';
+            return;
+        }
+
+        const lat = data.latitude;
+        const lng = data.longitude;
+
+        document.getElementById('trackingStatus').textContent = '🛵 Rider is on the way!';
+        document.getElementById('trackingTime').textContent   = `Updated: ${data.updatedAt}`;
+
+        if (!riderMarker) {
+            riderMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: '',
+                    html: `<div style="
+                        background:#614c3a; width:20px; height:20px;
+                        border-radius:50%; border:3px solid #CCBEA8;
+                        box-shadow:0 0 8px rgba(204,190,168,0.8);">
+                    </div>`,
+                    iconAnchor: [10, 10]
+                })
+            }).addTo(trackingMap).bindPopup('🛵 Your Rider');
+        } else {
+            riderMarker.setLatLng([lat, lng]);
+        }
+
+        trackingMap.setView([lat, lng], 15);
+    } catch (err) {
+        document.getElementById('trackingStatus').textContent = 'Error fetching location.';
+    }
+}
+
+document.getElementById('closeTrackingModal').addEventListener('click', () => {
+    if (trackingInterval) {
+        clearInterval(trackingInterval);
+        trackingInterval = null;
+    }
+    riderMarker = null;
+    if (trackingMap) {
+        trackingMap.remove();
+        trackingMap = null;
+    }
+    document.getElementById('trackingModal').style.display = 'none';
 });
 </script>
